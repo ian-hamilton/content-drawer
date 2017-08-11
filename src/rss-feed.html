@@ -1,0 +1,252 @@
+<link rel="import" href="../bower_components/polymer/polymer-element.html">
+<link rel="import" href="../bower_components/iron-ajax/iron-ajax.html">
+<link rel="import" href="../bower_components/paper-card/paper-card.html">
+<link rel="import" href="../bower_components/iron-icon/iron-icon.html">
+<link rel="import" href="../bower_components/iron-icons/iron-icons.html">
+<link rel="import" href="../bower_components/iron-icons/social-icons.html">
+<link rel="import" href="../bower_components/iron-icons/communication-icons.html">
+<link rel="import" href="../bower_components/paper-icon-button/paper-icon-button.html">
+<link rel="import" href="shared-styles.html">
+
+<dom-module id="rss-feed">
+    <template>
+        <style include="shared-styles">
+         :host {
+            display: block;
+
+            padding: 10px;
+        }
+
+        .feedcard {
+            width: 100%;
+            margin: 12px;
+        }
+
+        .feedcard {
+            --paper-card-header-image: {
+                width: 100%;
+                height: 100px;
+            }
+            ;
+
+            --paper-card-header-text: {
+                color: white;
+            }
+            --paper-card-actions: {
+                color: #ddd;
+            }
+        }
+
+        .feed a:link,
+        a:visited,
+        a:hover,
+        a:active {
+            margin-left: 4px;
+            text-decoration: none;
+            color: var(--social-toolbar-icon-color);
+        }
+        </style>
+        <iron-ajax auto url="https://www.wired.com/feed/rss" handle-as="document" on-response="handleResponse" debounce-duration="300"></iron-ajax>
+        <template is="dom-repeat" items="{{feed.items}}">
+            <div class="feed">
+                <a href="[[item.link]]">
+                    <paper-card class="feedcard" heading="[[item.title]]" image="[[item.thumbnail]]">
+                        <div class="card-content">
+                            <div>[[item.description]]</div>
+                        </div>
+                        <div class="card-actions">
+                            <paper-icon-button icon="favorite"></paper-icon-button>
+                            <paper-icon-button icon="bookmark"></paper-icon-button>
+                            <paper-icon-button icon="social:share"></paper-icon-button>
+                        </div>
+                    </paper-card>
+                </a>
+            </div>
+        </template>
+
+    </template>
+
+    <script>
+    class RssFeed extends Polymer.Element {
+        static get is() { return 'rss-feed'; }
+
+        static get properties() {
+            return {
+                auto: {
+                    type: Boolean,
+                    value: true
+                },
+                feed: {
+                    type: Object,
+                    notify: true
+                }
+            }
+        }
+
+        handleResponse(response) {
+            var channel = response.detail.response;
+
+            var feed = {};
+            feed.title = this.parseElement(channel, 'title');
+            feed.description = this.parseElement(channel, 'description');
+            feed.link = this.parseElement(channel, 'link');
+            feed.language = this.parseElement(channel, 'language');
+            feed.copyright = this.parseElement(channel, 'copyright');
+            feed.managingEditor = this.parseElement(channel, 'managingEditor');
+            feed.webMaster = this.parseElement(channel, 'webMaster');
+            feed.pubDate = this.parseElement(channel, 'pubDate', this.dateCallback);
+            feed.lastBuildDate = this.parseElement(channel, 'lastBuildDate', this.dateCallback);
+            feed.generator = this.parseElement(channel, 'generator');
+            feed.docs = this.parseElement(channel, 'docs');
+            feed.cloud = this.parseElement(channel, 'cloud', this.cloudCallback);
+            feed.ttl = this.parseElement(channel, 'ttl');
+            feed.image = this.parseElement(channel, 'image', this.imageCallback);
+            feed.rating = this.parseElement(channel, 'rating');
+            feed.textInput = this.parseElement(channel, 'textInput', this.textInputCallback);
+            feed.skipDays = this.parseElement(channel, 'skipDays', this.daysCallback);
+            feed.skipHours = this.parseElement(channel, 'skipHours', this.hoursCallback);
+            feed.categories = [];
+            Array.prototype.forEach.call(channel.querySelectorAll('category'), function(item) {
+                feed.categories.push({ title: item.textContent, domain: item.domain });
+            });
+            feed.items = this.parseItems(channel);
+            this.feed = feed;
+
+        }
+
+        parseItems(channel) {
+            var items = [];
+            var self = this;
+            Array.prototype.forEach.call(channel.querySelectorAll('item'), function(item) {
+                var itemObj = {};
+                itemObj.title = self.parseElement(item, 'title');
+                itemObj.description = self.parseElement(item, 'description');
+                itemObj.link = self.parseElement(item, 'link');
+                itemObj.author = self.parseElement(item, 'author');
+                itemObj.comments = self.parseElement(item, 'comments');
+                itemObj.guid = self.parseElement(item, 'guid');
+                itemObj.pubDate = self.parseElement(item, 'pubDate', self.dateCallback);
+                itemObj.source = self.parseElement(item, 'source', self.sourceCallback);
+                itemObj.enclosure = self.parseElement(item, 'enclosure', self.enclosureCallback);
+                itemObj.thumbnail = self.parseElement(item, 'thumbnail', self.thumbnailCallback);
+                itemObj.categories = [];
+                Array.prototype.forEach.call(item.querySelectorAll('category'), function(category) {
+                    itemObj.categories.push({ title: category.textContent, domain: category.domain });
+                });
+                console.log(itemObj);
+                items.push(itemObj);
+            });
+            return items;
+        }
+
+        parseElement(channel, string, cb) {
+            if (!cb) {
+                cb = this.textContentCallback;
+            }
+            var item = channel.querySelector(string);
+            return cb(item);
+        }
+
+        textContentCallback(item) {
+            if (item) {
+                return item.textContent;
+            } else {
+                return "";
+            }
+        }
+
+        thumbnailCallback(item) {
+            var url = "";
+            if (item) {
+                url = item.getAttribute('url');
+            }
+            return url;
+        }
+
+        dateCallback(item) {
+            if (item) {
+                return new Date(item.textContent);
+            } else {
+                return "";
+            }
+        }
+
+        cloudCallback(item) {
+            var cloud = {};
+            if (item) {
+                cloud.domain = item.domain;
+                cloud.port = item.port;
+                cloud.path = item.path;
+                cloud.registerProcedure = item.registerPrucedure;
+                cloud.protocol = item.protocol;
+            }
+            return cloud;
+        }
+
+        imageCallback(item) {
+            var image = {};
+            if (item) {
+                image.url = this.parseElement(item, 'url');
+                image.title = this.parseElement(item, 'title');
+                image.link = this.parseElement(item, 'link');
+                image.description = this.parseElement(item, 'description');
+                image.height = this.parseElement(item, 'height');
+                image.width = this.parseElement(item, 'width');
+            }
+            return image;
+        }
+
+        textInputCallback(item) {
+            var textInput = {};
+            if (item) {
+                textInput.title = this.parseElement(channel, 'title');
+                textInput.description = this.parseElement(channel, 'description');
+                textInput.name = this.parseElement(channel, 'name');
+                textInput.link = this.parseElement(channel, 'link');
+            }
+            return textInput;
+        }
+
+        daysCallback(item) {
+            var days = [];
+            if (item) {
+                Array.prototype.forEach.call(channel.querySelectorAll('day'), function(element) {
+                    days.push(element.textContent);
+                });
+            }
+            return days;
+        }
+
+        hoursCallback(item) {
+            var hours = [];
+            if (item) {
+                Array.prototype.forEach.call(channel.querySelectorAll('hour'), function(element) {
+                    hours.push(element.textContent);
+                });
+            }
+            return hours;
+        }
+
+        sourceCallback(item) {
+            var source = {};
+            if (item) {
+                source.title = item.textContent;
+                source.url = item.url
+            }
+            return source;
+        }
+
+        enclosureCallback(item) {
+            var enclosure = {};
+            if (item) {
+                enclosure.url = item.url;
+                enclosure.length = item.length;
+                enclosure.type = item.type;
+            }
+            return enclosure;
+        }
+
+    }
+    window.customElements.define(RssFeed.is, RssFeed);
+    </script>
+</dom-module>

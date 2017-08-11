@@ -33,7 +33,7 @@
                 color: white;
             }
             --paper-card-actions: {
-                color: #ddd;
+                color: #4285f4;
             }
         }
 
@@ -49,18 +49,19 @@
         <iron-ajax auto url="https://www.wired.com/feed/rss" handle-as="document" on-response="handleResponse" debounce-duration="300"></iron-ajax>
         <template is="dom-repeat" items="{{feed.items}}">
             <div class="feed">
-                <a href="[[item.link]]">
-                    <paper-card class="feedcard" heading="[[item.title]]" image="[[item.thumbnail]]">
+
+                <paper-card class="feedcard" heading="[[item.title]]" image="[[item.thumbnail]]">
+                    <a href="[[item.link]]">
                         <div class="card-content">
                             <div>[[item.description]]</div>
                         </div>
-                        <div class="card-actions">
-                            <paper-icon-button icon="favorite"></paper-icon-button>
-                            <paper-icon-button icon="bookmark"></paper-icon-button>
-                            <paper-icon-button icon="social:share"></paper-icon-button>
-                        </div>
-                    </paper-card>
-                </a>
+                    </a>
+                    <div class="card-actions">
+                        <paper-icon-button icon$="[[iconForItem(item.selected)]]" on-click="addFavorites"></paper-icon-button>
+                        <paper-icon-button icon="social:share"></paper-icon-button>
+                    </div>
+                </paper-card>
+
             </div>
         </template>
 
@@ -81,6 +82,18 @@
                     notify: true
                 }
             }
+        }
+
+        iconForItem(isSelected) {
+            return isSelected ? 'star-border' : 'star-border';
+        }
+
+        addFavorites(e) {
+            if(item.selected)
+                item.selected = false;
+            else 
+                item.selected = true;
+
         }
 
         handleResponse(response) {
@@ -245,6 +258,8 @@
             }
             return enclosure;
         }
+
+ 
 
     }
     window.customElements.define(RssFeed.is, RssFeed);
